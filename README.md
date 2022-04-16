@@ -19,14 +19,8 @@ You are able to install all required components to realize this project using th
 #### Installation of ROS and Turtlebot3
 We won't address the whole installation process of ROS and Turtlebot3 but you can access all required info from [ROS & Turtlebot3 Installation](https://emanual.robotis.com/docs/en/platform/turtlebot3/quick-start/#pc-setup).
 
-After all installations are completed, you can demo our robotic environment using the given commands:
-```
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
-```
-You should see a view like the one given below.
-<p align="center" width="100%">
-    <img src="https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/turtlebot3.png"> 
-</p>
+#### Installation of Docker on Ubuntu
+You can utilize this [URL](https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/)
 
 #### Installation of Kafka and Zookeeper
 We won't address the whole installation process of Kafka and Zookeeper but you can access all required info from [Kafka & Zookeeper Installation](https://www.linode.com/docs/guides/how-to-install-apache-kafka-on-ubuntu/).
