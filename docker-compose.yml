@@ -1,0 +1,78 @@
+version: '3'
+
+networks:
+    datapipeline:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: "172.18.0.0/16"
+
+
+services:  
+  spark:
+    image: docker.io/bitnami/spark:3
+    container_name: spark_master
+    hostname: spark_master
+    user: root
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - '8080:8080'
+    volumes:
+      - ../streamingProje:/home
+      - /opt/spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
+      - /opt/spark/jars:/opt/bitnami/spark/ivy:z
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.2
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.3
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: kafka
+    hostname: kafka
+    ports:
+      - '9092:9092'
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    volumes:
+      - ../streamingProje:/home
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.4
+
+  cassandra:
+    image: 'bitnami/cassandra:latest'
+    container_name: cassandra
+    hostname: cassandra
+    ports:
+      - '9042:9042'
+    environment:
+      - CASSANDRA_TRANSPORT_PORT_NUMBER=7000
+    volumes:
+      - ../streamingProje:/home
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.5
