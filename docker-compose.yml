@@ -69,8 +69,6 @@ services:
     hostname: cassandra
     ports:
       - '9042:9042'
-    environment:
-      - CASSANDRA_TRANSPORT_PORT_NUMBER=7000
     volumes:
       - ../streamingProje:/home
     networks:
