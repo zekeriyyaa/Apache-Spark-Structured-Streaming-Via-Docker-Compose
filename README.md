@@ -234,12 +234,18 @@ First of all, we will create a new Kafka topic namely *odometry* for ROS odom da
 docker exec -it 1c31511ce206 bash
 
 # Create Kafka "odometry" topic for ROS odom data
-kafka$ bin/kafka-topics.sh --create --topic odometry --partitions 1 --replication-factor 1 -bootstrap-server localhost:9092
+kafka$ bin/kafka-topics.sh --create --topic odom --partitions 1 --replication-factor 1 -bootstrap-server localhost:9092
 ```
 #### Check Kafka setup through Zookeeper
 ```
 # Execute zookeeper container with container id given above
 docker exec -it 1c31511ce206 bash
+
+# run command
+opt/bitnami/zookeeper/bin/zkCli.sh -server localhost:2181
+
+# list all brokers topic
+ls /brokers/topics
 ```
 You will have a view like:
 <p align="center" width="100%">
@@ -253,6 +259,7 @@ Initially, we will create a *keyspace* and then a *topic* in it using given comm
 docker exec -it 1c31511ce206 bash
 
 # Open the cqlsh
+cqlsh -u cassandra -p cassandra
 
 # Run the command to create 'ros' keyspace
 cqlsh> CREATE KEYSPACE ros WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 1};
@@ -463,10 +470,10 @@ If you are sure that all preparations are done, you can start a demo. You have t
 ```
 # these all are implemented in your local pc
 # open a terminal and start roscore
-$ roscore
+roscore
 
 # open another terminal and run odomPublisher.py
-$ python3 odomPublisher.py
+python3 odomPublisher.py
 ```
 <p align="center" width="100%">
     <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/odomPublisher.jpg"> 
@@ -474,7 +481,7 @@ $ python3 odomPublisher.py
 
 ```
 # open another terminal and run ros2Kafka.py
-$ python3 ros2Kafka.py
+python3 ros2Kafka.py
 ```
 
 <p align="center" width="100%">
@@ -513,8 +520,6 @@ After all the process is done, we got the data in our Cassandra table as the giv
 
 You can query the given command to see your table:
 ```
-# Open the cqlsh 
-cqlsh
 # Then write select query to see content of the table
 cqlsh> select * from ros.odometry
 ```
