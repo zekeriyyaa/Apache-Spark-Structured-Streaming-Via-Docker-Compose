@@ -16,7 +16,6 @@ odometrySchema = StructType([
 spark = SparkSession \
     .builder \
     .appName("SparkStructuredStreaming") \
-    .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0") \
     .config("spark.cassandra.connection.host","172.18.0.5")\
     .config("spark.cassandra.connection.port","9042")\
     .config("spark.cassandra.auth.username","cassandra")\
