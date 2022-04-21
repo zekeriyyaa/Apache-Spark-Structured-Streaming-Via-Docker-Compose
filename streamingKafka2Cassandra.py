@@ -20,6 +20,7 @@ spark = SparkSession \
     .config("spark.cassandra.connection.port","9042")\
     .config("spark.cassandra.auth.username","cassandra")\
     .config("spark.cassandra.auth.password","cassandra")\
+    .config("spark.driver.host", "localhost")\
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("ERROR")
@@ -48,7 +49,6 @@ def writeToCassandra(writeDF, _):
     .save()
 
 df1.writeStream \
-    .trigger(processingTime="3 seconds")\
     .foreachBatch(writeToCassandra) \
     .outputMode("update") \
     .start()\
