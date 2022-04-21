@@ -133,6 +133,7 @@ First of all, we generated a network called datapipeline for the architecture. T
 We use "volumes" to import our scripts to containers.
 >:exclamation: You have to implement " ../streamingProje:/home"  part for your system.
 
+You can access the [docker-compose](https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/docker-compose.yml) and repleca your configs.
 
 ```
 version: '3'
