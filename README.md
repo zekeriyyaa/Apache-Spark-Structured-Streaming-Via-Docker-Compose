@@ -1,148 +1,114 @@
 # Apache-Spark-Structured-Streaming-Via-Docker-Compose
 
-The purpose of this project is to demonstrate a structured streaming pipeline with Apache Spark. The process consists of given steps:
+The purpose of this project is to build a structured streaming pipeline through docker containers. The process consists of the given steps:
   
 0. Installation Process
 1. Prepare a robotic simulation environment to generate data to feed into the Kafka. 
-2. Prepare Kafka and Zookeeper environment to store discrete data.
-3. Prepare Cassandra environment to store analyzed data.
-4. Prepare Apache Spark structured streaming pipeline, integrate with Kafka and Cassandra.
-5. Result
+2. Prepare docker-compose file
+3. Running docker-compose file
+4. Prepare Apache Spark structured streaming
+5. Demonstration & Results
 
 <p align="center" width="100%">
-    <img src="https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/data_pipeline.png"> 
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/architecture.PNG"> 
 </p>
 
 ### 0. Installation Processes
 You are able to install all required components to realize this project using the given steps.
 
-#### Installation of ROS and Turtlebot3
-We won't address the whole installation process of ROS and Turtlebot3 but you can access all required info from [ROS & Turtlebot3 Installation](https://emanual.robotis.com/docs/en/platform/turtlebot3/quick-start/#pc-setup).
+#### Installation of ROS
+We won't address the whole installation process of ROS but you can access all required info from [ROS Noetic & Ubuntu 20.04 Installation](http://wiki.ros.org/noetic/Installation/Ubuntu).
 
 #### Installation of Docker on Ubuntu
-You can utilize this [URL](https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/https://docs.docker.com/engine/install/ubuntu/)
+You can utilize this [URL](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-20-04)
 
-#### Installation of Kafka and Zookeeper
-We won't address the whole installation process of Kafka and Zookeeper but you can access all required info from [Kafka & Zookeeper Installation](https://www.linode.com/docs/guides/how-to-install-apache-kafka-on-ubuntu/).
-
-After all installations are completed, you can demo Kafka using the given commands:
-```
-# Change your path to Kafka folder and then run 
-bin/zookeeper-server-start.sh config/zookeeper.properties
-
-# Open second terminal and then run
-bin/kafka-server-start.sh config/server.properties
-
-# Create Kafka "demo" topic
-bin/kafka-topics.sh --create --topic demo --partitions 1 --replication-factor 1 -bootstrap-server localhost:9092
-```
-
-Once you create "demo" topic, you can run [kafka-demo/producer.py](https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/kafka-demo/producer.py) and [kafka-demo/consumer.py](https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/kafka-demo/consumer.py) respectively to check your setup.
+#### Installation of Kafka-Python Library used for publishing data received from ROS to Kafka
 >:exclamation: If you haven't installed [kafka-python](https://kafka-python.readthedocs.io/en/master/), use the given command and then run given files.
 ```
 pip install kafka-python
 ```
-- producer.py
-```python3
-import time,json,random
-from datetime import datetime
-from data_generator import generate_message
-from kafka import KafkaProducer
-
-def serializer(message):
-    return json.dumps(message).encode("utf-8")
-    
-producer = KafkaProducer(
-    bootstrap_servers=["localhost:9092"],
-    value_serializer=serializer
-)
-
-if __name__=="__main__":
-    while True:
-        dummy_messages=generate_message()
-        print(f"Producing message {datetime.now()} | Message = {str(dummy_messages)}")
-        producer.send("demo",dummy_messages)
-        time.sleep(2)
-```
-- consumer.py
-```python3
-import json
-from kafka import KafkaConsumer
-
-if __name__=="__main__":
-    consumer=KafkaConsumer(
-        "demo",
-        bootstrap_servers="localhost:9092",
-        auto_offset_reset="latest"    )
-
-    for msg in consumer:
-        print(json.loads(msg.value))
-```
-You should see a view like the one given below after run the commands:
-```
-python3 producer.py
-python3 consumer.py
-```
-
-<p align="center" width="100%">
-    <img src="https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/kafka-demo.png"> 
-</p>
-
-#### Installation of Cassandra
-We won't address the whole installation process of Cassandra but you can access all required info from [Cassandra Installation](https://phoenixnap.com/kb/install-cassandra-on-ubuntu).
-
-After all installations are completed, you can demo Cassandra using *cqlsh*. You can check this [link](https://www.tutorialspoint.com/cassandra/index.htm).
-
-#### Installation of Apache Spark
-We won't address the whole installation process of Apache Spark but you can access all required info from [Apache Spark Installation](https://phoenixnap.com/kb/install-spark-on-ubuntu).
-
-After all installations are completed, you can make a quick example like [here](https://spark.apache.org/docs/latest/streaming-programming-guide.html).
-
 
 ### 1. Prepare a robotic simulation environment
-[ROS (Robot Operating System)](http://wiki.ros.org/) allows us to design a robotic environment. We will use [Turtlebot3](https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/), a robot in [Gazebo](http://gazebosim.org/) simulation env, to generate data for our use case. Turtlebot3 publishes its data with ROS topics. Therefore, we will subscribe the topic and send data into Kafka.
+[ROS (Robot Operating System)](http://wiki.ros.org/) allows us to design a robotic environment. In this project, we will use ROS as a data provider. "odom" is a type of message that represents the position of a vehicle. We utilize the given code that generates arbitrary "odom" data and publishes them. 
+```python3
+#!/usr/bin/env python3
+import math
+from math import sin, cos, pi
 
-#### Run the simulation environment and analysis the data we will use
-Turtlebot3 publishes its odometry data with ROS "odom" topic. So, we can see the published data with the given command:
+import rospy
+import tf
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+
+rospy.init_node('odometry_publisher')
+
+odom_pub = rospy.Publisher("odom", Odometry, queue_size=50)
+odom_broadcaster = tf.TransformBroadcaster()
+
+x = 0.0
+y = 0.0
+th = 0.0
+
+vx = 0.1
+vy = -0.1
+vth = 0.1
+
+current_time = rospy.Time.now()
+last_time = rospy.Time.now()
+
+r = rospy.Rate(1.0)
+while not rospy.is_shutdown():
+    current_time = rospy.Time.now()
+
+    # compute odometry in a typical way given the velocities of the robot
+    dt = (current_time - last_time).to_sec()
+    delta_x = (vx * cos(th) - vy * sin(th)) * dt
+    delta_y = (vx * sin(th) + vy * cos(th)) * dt
+    delta_th = vth * dt
+
+    x += delta_x
+    y += delta_y
+    th += delta_th
+
+    # since all odometry is 6DOF we'll need a quaternion created from yaw
+    odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+
+    # first, we'll publish the transform over tf
+    odom_broadcaster.sendTransform(
+        (x, y, 0.),
+        odom_quat,
+        current_time,
+        "base_link",
+        "odom"
+    )
+
+    # next, we'll publish the odometry message over ROS
+    odom = Odometry()
+    odom.header.stamp = current_time
+    odom.header.frame_id = "odom"
+
+    # set the position
+    odom.pose.pose = Pose(Point(x, y, 0.), Quaternion(*odom_quat))
+
+    # set the velocity
+    odom.child_frame_id = "base_link"
+    odom.twist.twist = Twist(Vector3(vx, vy, 0), Vector3(0, 0, vth))
+
+    # publish the message
+    odom_pub.publish(odom)
+
+    last_time = current_time
+    r.sleep()
 ```
-# run the simulation environment
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
+
+#### Run the given code and analysis the data we will use
+This script publishes odometry data with ROS "odom" topic. So, we can see the published data with the given command:
+```
+# run the script environment
+python3 odomPublisher.py
 
 # check the topic to see data
 rostopic echo /odom
-```
-You should see a view like the one given below.
-```
-header: 
-  seq: 10954
-  stamp: 
-    secs: 365
-    nsecs: 483000000
-  frame_id: "odom"
-child_frame_id: "base_footprint"
-pose: 
-  pose: 
-    position: 
-      x: -2.000055643960576
-      y: -0.4997879642933192
-      z: -0.0010013932644100873
-    orientation: 
-      x: -1.3486164084605e-05
-      y: 0.0038530870521455017
-      z: 0.0016676819550213058
-      w: 0.9999911861487526
-  covariance: [1e-05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1e-05, 0.0, 0.0, 0.0, 0.0, 0.0,...
-twist: 
-  twist: 
-    linear: 
-      x: 5.8050405333644035e-08
-      y: 7.749200305343809e-07
-      z: 0.0
-    angular: 
-      x: 0.0
-      y: 0.0
-      z: 1.15143519181447e-05
-  covariance: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,...
 ```
 In this use case, we will just interest the given part of the data:
 ```
@@ -157,80 +123,137 @@ In this use case, we will just interest the given part of the data:
       w: 0.9999911861487526
 ```
 
-### 2. Prepare Kafka and Zookeeper environment
-The data produced by Turtlebot3 will stored into Kafka clusters. 
+### 2. Prepare Docker-Compose File
+First of all, we generated a network called datapipeline for the architecture. The architecture consists of 4 services and each has a static IP address and uses the default port as the given below:
+- Spark: 172.18.0.2
+- Zookeeper: 172.18.0.3
+- Kafka: 172.18.0.4
+- Cassandra : 172.18.0.5
+
+We use "volumes" to import our scripts to containers.
+>:exclamation: You have to implement " ../streamingProje:/home"  part for your system.
+
+
+```
+version: '3'
+
+networks:
+    datapipeline:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: "172.18.0.0/16"
+
+
+services:  
+  spark:
+    image: docker.io/bitnami/spark:3
+    container_name: spark_master
+    hostname: spark_master
+    user: root
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - '8080:8080'
+    volumes:
+      - ../streamingProje:/home
+      - /opt/spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
+      - /opt/spark/jars:/opt/bitnami/spark/ivy:z
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.2
+
+  zookeeper:
+    image: 'bitnami/zookeeper:latest'
+    container_name: zookeeper
+    hostname: zookeeper
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.3
+
+  kafka:
+    image: 'bitnami/kafka:latest'
+    container_name: kafka
+    hostname: kafka
+    ports:
+      - '9092:9092'
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+    volumes:
+      - ../streamingProje:/home
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.4
+
+  cassandra:
+    image: 'bitnami/cassandra:latest'
+    container_name: cassandra
+    hostname: cassandra
+    ports:
+      - '9042:9042'
+    volumes:
+      - ../streamingProje:/home
+    networks:
+      datapipeline:
+        ipv4_address: 172.18.0.5
+```
+
+
+### 3. Running docker-compose file
+Open your workspace folder which includes all files provided and run the given command as below.
+```
+# run docker-compose file
+docker-compose up
+```
+You will have a view like:
+<p align="center" width="100%">
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/docker_ps_output.jpg"> 
+</p>
+After all container is running, you can set up your environment.
 
 #### Prepare Kafka for Use Case
 First of all, we will create a new Kafka topic namely *odometry* for ROS odom data using the given commands:
 ```
-# Change your path to Kafka folder and then run 
-bin/zookeeper-server-start.sh config/zookeeper.properties
-
-# Open second terminal and then run
-bin/kafka-server-start.sh config/server.properties
+# Execute kafka container with container id given above
+docker exec -it 1c31511ce206 bash
 
 # Create Kafka "odometry" topic for ROS odom data
-bin/kafka-topics.sh --create --topic odometry --partitions 1 --replication-factor 1 -bootstrap-server localhost:9092
+kafka$ bin/kafka-topics.sh --create --topic odometry --partitions 1 --replication-factor 1 -bootstrap-server localhost:9092
 ```
-Then we will write a ROS subscriber to listen to the data from Turtlebot3. Also, since we need to send data to Kafka, it is necessary to add a producer script in it. We will use [ros/publish2kafka.py](https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/ros/publish2kafka.py) to do it. This script subscribes to the odom topic and sends the content of the topic to Kafka.
-```python3
-import rospy
-from nav_msgs.msg import Odometry
-import json
-from datetime import datetime
-from kafka import KafkaProducer
-
-count = 0
-def callback(msg):
-    global count
-    messages={
-        "id":count,
-        "posex":float("{0:.5f}".format(msg.pose.pose.position.x)),
-        "posey":float("{0:.5f}".format(msg.pose.pose.position.y)),
-        "posez":float("{0:.5f}".format(msg.pose.pose.position.z)),
-        "orientx":float("{0:.5f}".format(msg.pose.pose.orientation.x)),
-        "orienty":float("{0:.5f}".format(msg.pose.pose.orientation.y)),
-        "orientz":float("{0:.5f}".format(msg.pose.pose.orientation.z)),
-        "orientw":float("{0:.5f}".format(msg.pose.pose.orientation.w))
-        }
-
-    print(f"Producing message {datetime.now()} Message :\n {str(messages)}")
-    producer.send("odometry",messages)
-    count+=1
-
-producer = KafkaProducer(
-    bootstrap_servers=["localhost:9092"],
-    value_serializer=lambda message: json.dumps(message).encode('utf-8')
-)
-
-if __name__=="__main__":
-
-    rospy.init_node('odomSubscriber', anonymous=True)
-    rospy.Subscriber('odom',Odometry,callback)
-    rospy.spin()
+#### Check Kafka setup through Zookeeper
 ```
-You can use [ros/readFromKafka.py](https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/ros/readFromKafka.py) to check the data is really reach Kafka while ROS and publish2kafka.py is running.
-```python3
-import json
-from kafka import KafkaConsumer
-
-if __name__=="__main__":
-
-    consumer=KafkaConsumer(
-        "odometry",
-        bootstrap_servers="localhost:9092",
-        auto_offset_reset="earliest"
-    )
-
-    for msg in consumer:
-        print(json.loads(msg.value))
+# Execute zookeeper container with container id given above
+docker exec -it 1c31511ce206 bash
 ```
-### 3. Prepare Cassandra environment
+You will have a view like:
+<p align="center" width="100%">
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/zookeeper.jpg"> 
+</p>
 
 #### Prepare Cassandra for Use Case
 Initially, we will create a *keyspace* and then a *topic* in it using given command:
 ```
-# Open the cqlsh and then run the command to create 'ros' keyspace
+# Execute cassandra container with container id given above
+docker exec -it 1c31511ce206 bash
+
+# Open the cqlsh
+
+# Run the command to create 'ros' keyspace
 cqlsh> CREATE KEYSPACE ros WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 1};
 
 # Then, run the command to create 'odometry' topic in 'ros'
@@ -245,17 +268,14 @@ cqlsh> create table ros.odometry(
         orientw float);
 
 # Check your setup is correct
-cqlsh> DESCRIBE ros
-
-#and
 cqlsh> DESCRIBE ros.odometry
 ```
 > :warning: **The content of topic has to be the same as Spark schema**: Be very careful here!
 
-### 4. Prepare Apache Spark structured streaming pipeline
+### 4. Prepare Apache Spark structured streaming
 You are able to write analysis results to either console or Cassandra.
 #### (First Way) Prepare Apache Spark Structured Streaming Pipeline Kafka to Cassandra
-We will write streaming script that read *odometry* topic from Kafka, analyze it and then write results to Cassandra. We will use [spark-demo/streamingKafka2Cassandra.py](https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/spark-demo/streamingKafka2Cassandra.py) to do it.
+We will write streaming script that read *odometry* topic from Kafka, analyze it and then write results to Cassandra. We will use [streamingKafka2Cassandra.py](https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/streamingKafka2Cassandra.py) to do it.
 
 First of all, we create a schema same as we already defined in Cassandra.
 > :warning: **The content of schema has to be the same as Casssandra table**: Be very careful here!
@@ -272,29 +292,28 @@ odometrySchema = StructType([
                 StructField("orientw",FloatType(),False)
             ])
 ```
-Then, we create a Spark Session using two packages:
-- **for spark kafka connector**     : org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0
-- **for spark cassandra connector** : com.datastax.spark:spark-cassandra-connector_2.12:3.0.0
+Then, we create a Spark Session and specify our config here:
 ```python3
 spark = SparkSession \
     .builder \
     .appName("SparkStructuredStreaming") \
-    .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0") \
+    .config("spark.cassandra.connection.host","172.18.0.5")\
+    .config("spark.cassandra.connection.port","9042")\
+    .config("spark.cassandra.auth.username","cassandra")\
+    .config("spark.cassandra.auth.password","cassandra")\
+    .config("spark.driver.host", "localhost")\
     .getOrCreate()
 ```
-> :warning: **If you use spark-submit you can specify the packages as:** 
-
-- spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 spark_cassandra.py
 
 In order to read Kafka stream, we use **readStream()** and specify Kafka configurations as the given below:
 ```python3
 df = spark \
   .readStream \
   .format("kafka") \
-  .option("kafka.bootstrap.servers", "localhost:9092") \
-  .option("subscribe", "odometry") \
+  .option("kafka.bootstrap.servers", "172.18.0.4:9092") \
+  .option("subscribe", "rosmsgs") \
   .option("delimeter",",") \
-  .option("startingOffsets", "latest") \
+  .option("startingOffsets", "earliest") \
   .load() 
 ```
 Since Kafka send data as binary, first we need to convert the binary value to String using **selectExpr()** as the given below:
@@ -312,13 +331,13 @@ def writeToCassandra(writeDF, _):
     .save()
 
 df1.writeStream \
-    .option("spark.cassandra.connection.host","localhost:9042")\
     .foreachBatch(writeToCassandra) \
     .outputMode("update") \
     .start()\
     .awaitTermination()
+df1.show()
 ```
-Finally, we got the given script [spark-demo/streamingKafka2Cassandra.py](https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/spark-demo/streamingKafka2Cassandra.py):
+Finally, we got the given script [streamingKafka2Cassandra.py](https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/streamingKafka2Cassandra.py):
 ```python3
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType,StructField,FloatType,IntegerType
@@ -338,7 +357,11 @@ odometrySchema = StructType([
 spark = SparkSession \
     .builder \
     .appName("SparkStructuredStreaming") \
-    .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0") \
+    .config("spark.cassandra.connection.host","172.18.0.5")\
+    .config("spark.cassandra.connection.port","9042")\
+    .config("spark.cassandra.auth.username","cassandra")\
+    .config("spark.cassandra.auth.password","cassandra")\
+    .config("spark.driver.host", "localhost")\
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("ERROR")
@@ -347,18 +370,16 @@ spark.sparkContext.setLogLevel("ERROR")
 df = spark \
   .readStream \
   .format("kafka") \
-  .option("kafka.bootstrap.servers", "localhost:9092") \
-  .option("subscribe", "odometry") \
+  .option("kafka.bootstrap.servers", "172.18.0.4:9092") \
+  .option("subscribe", "rosmsgs") \
   .option("delimeter",",") \
-  .option("startingOffsets", "latest") \
+  .option("startingOffsets", "earliest") \
   .load() 
 
 df.printSchema()
 
 df1 = df.selectExpr("CAST(value AS STRING)").select(from_json(col("value"),odometrySchema).alias("data")).select("data.*")
 df1.printSchema()
-
-# It is possible to analysis data here using df1
 
 
 def writeToCassandra(writeDF, _):
@@ -369,22 +390,14 @@ def writeToCassandra(writeDF, _):
     .save()
 
 df1.writeStream \
-    .option("spark.cassandra.connection.host","localhost:9042")\
     .foreachBatch(writeToCassandra) \
     .outputMode("update") \
     .start()\
     .awaitTermination()
+df1.show()
 ```
 #### (Second Way) Prepare Apache Spark Structured Streaming Pipeline Kafka to Console
-There are a few differences between writing to the console and writing to Cassandra. 
-First of all, we don't need to use cassandra connector, so we remove it from packages.
-```python3
-spark = SparkSession \
-    .builder \
-    .appName("SSKafka") \
-    .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0") \
-    .getOrCreate()
-```
+There are a few differences between writing to the console and writing to Cassandra. We directly srite stream to console.
 With **writeStream()** we can write stream data directly to the console.
 ```python3
 df1.writeStream \
@@ -414,18 +427,20 @@ odometrySchema = StructType([
 spark = SparkSession \
     .builder \
     .appName("SSKafka") \
-    .config("spark.jars.packages","org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.0") \
+    .config("spark.driver.host", "localhost")\
     .getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
 
 df = spark \
   .readStream \
   .format("kafka") \
-  .option("kafka.bootstrap.servers", "localhost:9092") \
-  .option("subscribe", "odometry") \
+  .option("kafka.bootstrap.servers", "172.18.0.4:9092") \
+  .option("subscribe", "rosmsgs") \
   .option("delimeter",",") \
-  .option("startingOffsets", "latest") \
+  .option("startingOffsets", "earliest") \
   .load() 
+
+df.printSchema()
 
 df1 = df.selectExpr("CAST(value AS STRING)").select(from_json(col("value"),odometrySchema).alias("data")).select("data.*")
 df1.printSchema()
@@ -437,7 +452,60 @@ df1.writeStream \
   .start() \
   .awaitTermination()
 ```
-### 5. Result
+### 5. Demonstration & Results
+If you are sure that all preparations are done, you can start a demo. You have to follow the given steps .
+
+#### Start ROS and publish odom data to Kafka.
+- roscore : starts ROS master
+- odomPublisher.py : generates random odom data and publishes them along network
+- ros2Kafka.py : subscribes odom topic and writes odom data into kafka container
+```
+# these all are implemented in your local pc
+# open a terminal and start roscore
+$ roscore
+
+# open another terminal and run odomPublisher.py
+$ python3 odomPublisher.py
+```
+<p align="center" width="100%">
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/odomPublisher.jpg"> 
+</p>
+```
+# open another terminal and run ros2Kafka.py
+$ python3 ros2Kafka.py
+```
+<p align="center" width="100%">
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/ros2kafka.jpg"> 
+</p>
+
+#### (Option-1) Start Streaming to Console
+```
+# Execute spark container with container id given above
+docker exec -it e3080e48085c bash
+
+# go to /home and run given command
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0 streamingKafka2Console.py
+```
+
+#### (Option-2) Start Streaming to Cassandra
+```
+# Execute spark container with container id given above
+docker exec -it e3080e48085c bash
+
+# go to /home and run given command
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 streamingKafka2Console.py
+```
+After the spark job is started, you can see the schema on screen.
+<p align="center" width="100%">
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/schema.jpg"> 
+</p>
+
+If you run option-1, you will have a view as the given below on your terminal screen.
+<p align="center" width="100%">
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/streaming.jpg"> 
+</p>
+
+
 After all the process is done, we got the data in our Cassandra table as the given below:
 
 You can query the given command to see your table:
@@ -448,6 +516,6 @@ cqlsh
 cqlsh> select * from ros.odometry
 ```
 <p align="center" width="100%">
-    <img src="https://github.com/zekeriyyaa/PySpark-Structured-Streaming-ROS-Kafka-ApacheSpark-Cassandra/blob/main/cassandra.png"> 
+    <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/cassandra.jpg"> 
 </p>
 
