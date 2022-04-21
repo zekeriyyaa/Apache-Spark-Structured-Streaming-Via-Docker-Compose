@@ -407,7 +407,7 @@ df1.writeStream \
   .start() \
   .awaitTermination()
 ```
-The rest of the process takes place in the same way as the previous one. Finally, we got the given script spark-demo/streamingKafka2Console.py:
+The rest of the process takes place in the same way as the previous one. Finally, we got the given script [streamingKafka2Console.py](https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/streamingKafka2Console.py):
 ```python3
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType,StructField,LongType,IntegerType,FloatType,StringType
@@ -470,10 +470,12 @@ $ python3 odomPublisher.py
 <p align="center" width="100%">
     <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/odomPublisher.jpg"> 
 </p>
+
 ```
 # open another terminal and run ros2Kafka.py
 $ python3 ros2Kafka.py
 ```
+
 <p align="center" width="100%">
     <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/ros2kafka.jpg"> 
 </p>
