@@ -527,3 +527,8 @@ cqlsh> select * from ros.odometry
     <img src="https://github.com/zekeriyyaa/Apache-Spark-Structured-Streaming-Via-Docker-Compose/blob/main/img/cassandra.jpg"> 
 </p>
 
+
+
+### Infrastructure model
+
+![Infrastructure model](.infragenie/infrastructure_model.png)
