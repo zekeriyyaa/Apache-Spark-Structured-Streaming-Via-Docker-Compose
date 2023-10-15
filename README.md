@@ -104,6 +104,9 @@ while not rospy.is_shutdown():
 #### Run the given code and analysis the data we will use
 This script publishes odometry data with ROS "odom" topic. So, we can see the published data with the given command:
 ```
+# starts ROS master before running the script
+roscore
+
 # run the script environment
 python3 odomPublisher.py
 
@@ -234,7 +237,7 @@ First of all, we will create a new Kafka topic namely *odometry* for ROS odom da
 docker exec -it 1c31511ce206 bash
 
 # Create Kafka "odometry" topic for ROS odom data
-kafka$ bin/kafka-topics.sh --create --topic odom --partitions 1 --replication-factor 1 -bootstrap-server localhost:9092
+kafka$ kafka-topics.sh --create --topic odom --partitions 1 --replication-factor 1 -bootstrap-server PLAINTEXT://172.18.0.4:9092
 ```
 #### Check Kafka setup through Zookeeper
 ```
@@ -503,7 +506,7 @@ spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0 streami
 docker exec -it e3080e48085c bash
 
 # go to /home and run given command
-spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 streamingKafka2Console.py
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0,com.datastax.spark:spark-cassandra-connector_2.12:3.0.0 streamingKafka2Cassandra.py
 ```
 After the spark job is started, you can see the schema on screen.
 <p align="center" width="100%">
